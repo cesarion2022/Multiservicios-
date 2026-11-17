@@ -1,0 +1,252 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // --- Validation Helpers ---
+
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             data.roleLabel in ['ADMIN', 'DISPATCHER', 'TECHNICIAN', 'CLIENT'] &&
+             (!('preferredZone' in data) || (data.preferredZone is string && data.preferredZone.size() <= 80)) &&
+             data.themeMode in ['DARK', 'LIGHT', 'SYSTEM'] &&
+             data.twoFactorEnabled is bool &&
+             (!('twoFactorPinHash' in data) || (data.twoFactorPinHash is string && data.twoFactorPinHash.size() <= 128)) &&
+             (!('pushAssignments' in data) || data.pushAssignments is bool) &&
+             (!('pushPayments' in data) || data.pushPayments is bool) &&
+             (!('pushRouteAlerts' in data) || data.pushRouteAlerts is bool) &&
+             (!('webhookEnabled' in data) || data.webhookEnabled is bool) &&
+             (!('webhookUrl' in data) || (data.webhookUrl is string && data.webhookUrl.size() <= 300)) &&
+             (!('webhookApiKey' in data) || (data.webhookApiKey is string && data.webhookApiKey.size() <= 150)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidTechnician(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 80 &&
+             data.documentNumber is string && data.documentNumber.size() >= 3 && data.documentNumber.size() <= 30 &&
+             data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 30 &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('address' in data) || (data.address is string && data.address.size() <= 160)) &&
+             data.barrio is string && data.barrio.size() >= 1 && data.barrio.size() <= 80 &&
+             data.specialties is list && data.specialties.size() >= 1 && data.specialties.size() <= 9 &&
+             data.specialties[0] is string &&
+             data.departureTime is string && data.departureTime.size() >= 3 && data.departureTime.size() <= 20 &&
+             data.workSchedule is string && data.workSchedule.size() >= 3 && data.workSchedule.size() <= 60 &&
+             (!('knowledgeNotes' in data) || (data.knowledgeNotes is string && data.knowledgeNotes.size() <= 400)) &&
+             data.latitude is number && data.latitude >= 4.2 && data.latitude <= 4.7 &&
+             data.longitude is number && data.longitude >= -75.5 && data.longitude <= -75.0 &&
+             data.status in ['DISPONIBLE', 'EN_RUTA', 'EN_SERVICIO', 'FUERA_DE_TURNO'] &&
+             (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
+             (!('completedCount' in data) || (data.completedCount is int && data.completedCount >= 0)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidServiceOrder(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.orderCode is string && data.orderCode.size() >= 3 && data.orderCode.size() <= 30 &&
+             data.clientName is string && data.clientName.size() >= 2 && data.clientName.size() <= 80 &&
+             data.clientPhone is string && data.clientPhone.size() >= 5 && data.clientPhone.size() <= 30 &&
+             data.address is string && data.address.size() >= 3 && data.address.size() <= 160 &&
+             data.barrio is string && data.barrio.size() >= 1 && data.barrio.size() <= 80 &&
+             data.latitude is number && data.latitude >= 4.2 && data.latitude <= 4.7 &&
+             data.longitude is number && data.longitude >= -75.5 && data.longitude <= -75.0 &&
+             data.specialty is string && data.specialty.size() >= 2 && data.specialty.size() <= 40 &&
+             data.priority in ['NORMAL', 'URGENTE', 'EMERGENCIA'] &&
+             data.status in ['PENDIENTE', 'ASIGNADA', 'EN_RUTA', 'EN_PROGRESO', 'COMPLETADA', 'CANCELADA'] &&
+             (!('assignedTechId' in data) || (data.assignedTechId is string && data.assignedTechId.size() <= 128)) &&
+             (!('assignedTechName' in data) || (data.assignedTechName is string && data.assignedTechName.size() <= 80)) &&
+             (!('scheduledTime' in data) || (data.scheduledTime is string && data.scheduledTime.size() <= 30)) &&
+             data.estimatedCostCop is int && data.estimatedCostCop >= 0 && data.estimatedCostCop <= 500000000 &&
+             data.paymentMethod in ['NEQUI', 'BANCOLOMBIA', 'EFECTIVO', 'PSE'] &&
+             (!('paymentReference' in data) || (data.paymentReference is string && data.paymentReference.size() <= 80)) &&
+             data.paymentStatus in ['PENDIENTE', 'VERIFICADO', 'PAGADO'] &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 500)) &&
+             (!('technicianNotes' in data) || (data.technicianNotes is string && data.technicianNotes.size() <= 500)) &&
+             (!('clientRating' in data) || (data.clientRating is int && data.clientRating >= 0 && data.clientRating <= 5)) &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidNotification(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 300 &&
+             data.notifType in ['ASIGNACION', 'RUTA', 'PAGO', 'SISTEMA', 'SOPORTE'] &&
+             (!('orderId' in data) || (data.orderId is string && data.orderId.size() <= 128)) &&
+             data.readFlag is bool &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidSupportTicket(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 120 &&
+             data.category is string && data.category.size() >= 2 && data.category.size() <= 60 &&
+             data.priority in ['NORMAL', 'ALTA', 'CRITICA'] &&
+             data.description is string && data.description.size() >= 5 && data.description.size() <= 800 &&
+             data.status in ['ABIERTO', 'EN_REVISION', 'RESUELTO'] &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidBackup(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.label is string && data.label.size() >= 2 && data.label.size() <= 100 &&
+             data.techCount is int && data.techCount >= 0 &&
+             data.orderCount is int && data.orderCount >= 0 &&
+             data.totalRevenueCop is int && data.totalRevenueCop >= 0 &&
+             data.checksum is string && data.checksum.size() >= 4 && data.checksum.size() <= 64 &&
+             isValidTimestamp(data.createdAt) &&
+             isValidTimestamp(data.updatedAt);
+    }
+
+    // --- Collection Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'roleLabel', 'themeMode', 'twoFactorEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'phone', 'roleLabel', 'preferredZone', 'themeMode', 'twoFactorEnabled', 'twoFactorPinHash', 'pushAssignments', 'pushPayments', 'pushRouteAlerts', 'webhookEnabled', 'webhookUrl', 'webhookApiKey', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'phone', 'roleLabel', 'preferredZone', 'themeMode', 'twoFactorEnabled', 'twoFactorPinHash', 'pushAssignments', 'pushPayments', 'pushRouteAlerts', 'webhookEnabled', 'webhookUrl', 'webhookApiKey', 'updatedAt']);
+
+      allow delete: if false;
+
+      match /technicians/{techId} {
+        allow get: if isOwner(userId) && isValidId(techId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(techId) &&
+                         incoming().keys().hasAll(['userId', 'fullName', 'documentNumber', 'phone', 'barrio', 'specialties', 'departureTime', 'workSchedule', 'latitude', 'longitude', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'fullName', 'documentNumber', 'phone', 'email', 'address', 'barrio', 'specialties', 'departureTime', 'workSchedule', 'knowledgeNotes', 'latitude', 'longitude', 'status', 'rating', 'completedCount', 'createdAt', 'updatedAt']) &&
+                         isValidTechnician(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(techId) &&
+                         isValidTechnician(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'documentNumber', 'phone', 'email', 'address', 'barrio', 'specialties', 'departureTime', 'workSchedule', 'knowledgeNotes', 'latitude', 'longitude', 'status', 'rating', 'completedCount', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(techId);
+      }
+
+      match /orders/{orderId} {
+        allow get: if isOwner(userId) && isValidId(orderId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(orderId) &&
+                         incoming().keys().hasAll(['userId', 'orderCode', 'clientName', 'clientPhone', 'address', 'barrio', 'latitude', 'longitude', 'specialty', 'priority', 'status', 'estimatedCostCop', 'paymentMethod', 'paymentStatus', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'orderCode', 'clientName', 'clientPhone', 'address', 'barrio', 'latitude', 'longitude', 'specialty', 'priority', 'status', 'assignedTechId', 'assignedTechName', 'scheduledTime', 'estimatedCostCop', 'paymentMethod', 'paymentReference', 'paymentStatus', 'description', 'technicianNotes', 'clientRating', 'createdAt', 'updatedAt']) &&
+                         isValidServiceOrder(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(orderId) &&
+                         isValidServiceOrder(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().orderCode == existing().orderCode &&
+                         existing().status != 'CANCELADA' &&
+                         (
+                           // Active orders can update assignment, route, status, notes, and payment
+                           (existing().status != 'COMPLETADA' &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['clientName', 'clientPhone', 'address', 'barrio', 'latitude', 'longitude', 'specialty', 'priority', 'status', 'assignedTechId', 'assignedTechName', 'scheduledTime', 'estimatedCostCop', 'paymentMethod', 'paymentReference', 'paymentStatus', 'description', 'technicianNotes', 'clientRating', 'updatedAt'])) ||
+                           // Completed orders lock core execution fields; allow only payment verification, rating, or technician notes
+                           (existing().status == 'COMPLETADA' &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['paymentMethod', 'paymentReference', 'paymentStatus', 'clientRating', 'technicianNotes', 'updatedAt']))
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(orderId);
+      }
+
+      match /notifications/{notifId} {
+        allow get: if isOwner(userId) && isValidId(notifId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(notifId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'message', 'notifType', 'readFlag', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'message', 'notifType', 'orderId', 'readFlag', 'createdAt', 'updatedAt']) &&
+                         isValidNotification(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(notifId) &&
+                         isValidNotification(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['readFlag', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(notifId);
+      }
+
+      match /supportTickets/{ticketId} {
+        allow get: if isOwner(userId) && isValidId(ticketId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(ticketId) &&
+                         incoming().keys().hasAll(['userId', 'subject', 'category', 'priority', 'description', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'subject', 'category', 'priority', 'description', 'status', 'createdAt', 'updatedAt']) &&
+                         isValidSupportTicket(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(ticketId) &&
+                         isValidSupportTicket(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         existing().status != 'RESUELTO' &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['status', 'priority', 'description', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(ticketId);
+      }
+
+      match /backups/{backupId} {
+        allow get: if isOwner(userId) && isValidId(backupId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(backupId) &&
+                         incoming().keys().hasAll(['userId', 'label', 'techCount', 'orderCount', 'totalRevenueCop', 'checksum', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'label', 'techCount', 'orderCount', 'totalRevenueCop', 'checksum', 'createdAt', 'updatedAt']) &&
+                         isValidBackup(incoming(), userId);
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(backupId);
+      }
+    }
+  }
+}

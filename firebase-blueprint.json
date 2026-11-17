@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile, preferences, 2FA settings, and third-party webhook configuration for Ibagué T.Q.M. Multiservicios.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID of the owner." },
+        "displayName": { "type": "string", "description": "Full display name." },
+        "email": { "type": "string", "description": "User email address." },
+        "phone": { "type": "string", "description": "Contact phone number." },
+        "roleLabel": { "type": "string", "enum": ["ADMIN", "DISPATCHER", "TECHNICIAN", "CLIENT"] },
+        "preferredZone": { "type": "string", "description": "Preferred Ibagué comuna or zone." },
+        "themeMode": { "type": "string", "enum": ["DARK", "LIGHT", "SYSTEM"] },
+        "twoFactorEnabled": { "type": "boolean", "description": "Whether 2FA verification is required on sign-in." },
+        "twoFactorPinHash": { "type": "string", "description": "SHA-256 hash of user configured 6-digit 2FA PIN." },
+        "pushAssignments": { "type": "boolean" },
+        "pushPayments": { "type": "boolean" },
+        "pushRouteAlerts": { "type": "boolean" },
+        "webhookEnabled": { "type": "boolean" },
+        "webhookUrl": { "type": "string" },
+        "webhookApiKey": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp (FieldValue.serverTimestamp())." }
+      },
+      "required": ["userId", "displayName", "roleLabel", "themeMode", "twoFactorEnabled", "createdAt", "updatedAt"]
+    },
+    "Technician": {
+      "title": "Technician",
+      "description": "Registered field technician with departure time, work schedule, specialties, skills, and real-time coordinates in Ibagué.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "documentNumber": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "barrio": { "type": "string" },
+        "specialties": { "type": "array" },
+        "departureTime": { "type": "string" },
+        "workSchedule": { "type": "string" },
+        "knowledgeNotes": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "status": { "type": "string", "enum": ["DISPONIBLE", "EN_RUTA", "EN_SERVICIO", "FUERA_DE_TURNO"] },
+        "rating": { "type": "number" },
+        "completedCount": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "fullName", "documentNumber", "phone", "barrio", "specialties", "departureTime", "workSchedule", "latitude", "longitude", "status", "createdAt", "updatedAt"]
+    },
+    "ServiceOrder": {
+      "title": "ServiceOrder",
+      "description": "Service assignment order with route destination, technician assignment, payment gateway status, and automatic completion notes.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "orderCode": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "address": { "type": "string" },
+        "barrio": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "specialty": { "type": "string" },
+        "priority": { "type": "string", "enum": ["NORMAL", "URGENTE", "EMERGENCIA"] },
+        "status": { "type": "string", "enum": ["PENDIENTE", "ASIGNADA", "EN_RUTA", "EN_PROGRESO", "COMPLETADA", "CANCELADA"] },
+        "assignedTechId": { "type": "string" },
+        "assignedTechName": { "type": "string" },
+        "scheduledTime": { "type": "string" },
+        "estimatedCostCop": { "type": "integer" },
+        "paymentMethod": { "type": "string", "enum": ["NEQUI", "BANCOLOMBIA", "EFECTIVO", "PSE"] },
+        "paymentReference": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["PENDIENTE", "VERIFICADO", "PAGADO"] },
+        "description": { "type": "string" },
+        "technicianNotes": { "type": "string" },
+        "clientRating": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "orderCode", "clientName", "clientPhone", "address", "barrio", "latitude", "longitude", "specialty", "priority", "status", "estimatedCostCop", "paymentMethod", "paymentStatus", "createdAt", "updatedAt"]
+    },
+    "PushNotificationLog": {
+      "title": "PushNotificationLog",
+      "description": "Real-time notification event for assignments, routes, payments, and support.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "notifType": { "type": "string", "enum": ["ASIGNACION", "RUTA", "PAGO", "SISTEMA", "SOPORTE"] },
+        "orderId": { "type": "string" },
+        "readFlag": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "notifType", "readFlag", "createdAt", "updatedAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Specialized technical support ticket.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subject": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string", "enum": ["NORMAL", "ALTA", "CRITICA"] },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["ABIERTO", "EN_REVISION", "RESUELTO"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "subject", "category", "priority", "description", "status", "createdAt", "updatedAt"]
+    },
+    "CloudBackupSnapshot": {
+      "title": "CloudBackupSnapshot",
+      "description": "Metadata snapshot for cloud backups.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "label": { "type": "string" },
+        "techCount": { "type": "integer" },
+        "orderCount": { "type": "integer" },
+        "totalRevenueCop": { "type": "integer" },
+        "checksum": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "label", "techCount", "orderCount", "totalRevenueCop", "checksum", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile, visual preferences, 2FA config, and third-party API webhook settings."
+    },
+    "/users/{userId}/technicians/{techId}": {
+      "schema": { "$ref": "#/entities/Technician" },
+      "description": "Registered field technicians owned by the workspace."
+    },
+    "/users/{userId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/ServiceOrder" },
+      "description": "Service orders, route assignments, and payment tracking."
+    },
+    "/users/{userId}/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/PushNotificationLog" },
+      "description": "Real-time notifications feed."
+    },
+    "/users/{userId}/supportTickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Specialized technical support requests."
+    },
+    "/users/{userId}/backups/{backupId}": {
+      "schema": { "$ref": "#/entities/CloudBackupSnapshot" },
+      "description": "Automatic and manual cloud backup snapshots."
+    }
+  }
+}

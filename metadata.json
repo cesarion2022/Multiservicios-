@@ -1,0 +1,6 @@
+{
+  "name": "Ibagué T.Q.M. Multiservicios",
+  "description": "Plataforma integral para planificación de rutas técnicas, seguimiento en tiempo real, asignación de órdenes, portal de clientes, pagos Nequi/Bancolombia, reportes PDF/CSV/JSON y panel administrativo en Ibagué.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
